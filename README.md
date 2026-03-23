@@ -2,7 +2,7 @@
 A terminal-based task manager built with plain TypeScript that supports full undo/redo functionality. This project is designed to deepen understanding of core data structures and design patterns—especially stacks, linked lists, and the Command Pattern.
 
 ## Features
-- Add, delete, and update tasks
+- Add, delete, update, complete, and clear all tasks
 - View all tasks in the terminal
 - Undo last action
 - Redo undone actions
@@ -31,21 +31,25 @@ This project focuses on mastering:
 src/
 │
 ├── models/
-│   └── Task.ts
+│   └── task.ts
 │
 ├── data-structures/
-│   ├── Stack.ts
-│   └── LinkedList.ts
+│   └── linkedList.ts
 │
 ├── commands/
-│   ├── Command.ts
-│   ├── AddTaskCommand.ts
-│   ├── DeleteTaskCommand.ts
-│   └── UpdateTaskCommand.ts
+│   ├── command.ts
+│   ├── commandManager.ts
+│   ├── addTaskCommand.ts
+│   ├── deleteTaskCommand.ts
+│   ├── completeTaskCommand.ts
+│   ├── clearAllTaskCommand.ts
+│   └── updateTaskCommand.ts
 │
 ├── services/
-│   ├── TaskManager.ts
+│   ├── taskManager.ts
 │   └── fileHandler.ts
+│
+├── dist/
 │
 └── cli/
     └── index.ts
@@ -57,7 +61,7 @@ src/
 | `add <task>`  | Add a new task          |
 | `delete <id>` | Delete a task           |
 | `update <id>` | Update a task           |
-| `list`        | Show all tasks          |
+| `all`         | Show all tasks          |
 | `undo`        | Undo last action        |
 | `redo`        | Redo last undone action |
 | `exit`        | Exit app                |

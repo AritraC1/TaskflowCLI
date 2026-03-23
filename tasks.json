@@ -1,7 +1,17 @@
 [
   {
     "id": 1,
-    "title": "Learn typescript setup",
+    "title": "\"buy 6 apples\"",
+    "isCompleted": false
+  },
+  {
+    "id": 2,
+    "title": "\"buy 500gm tomatoes\"",
+    "isCompleted": false
+  },
+  {
+    "id": 3,
+    "title": "\"buy 1L milk\"",
     "isCompleted": false
   }
 ]

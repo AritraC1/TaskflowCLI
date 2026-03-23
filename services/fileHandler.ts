@@ -1,10 +1,11 @@
 import fs from "fs";
 import path from "path";
 
+// Create an absolute path to the tasks.json file in the current working directory
 const filePath = path.join(process.cwd(), "tasks.json");
 
 class FileHandler {
-  // Load tasks
+  // Load tasks from JSON file
   loadTasks() {
     try {
       if (!fs.existsSync(filePath)) {
@@ -19,7 +20,7 @@ class FileHandler {
     }
   }
 
-  // Save tasks
+   // Save tasks to the JSON file
   saveTask(tasks: any[]) {
     try {
       fs.writeFileSync(filePath, JSON.stringify(tasks, null, 2));
