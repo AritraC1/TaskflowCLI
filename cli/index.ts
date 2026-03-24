@@ -8,30 +8,35 @@ import { DeleteTaskCommand } from "../commands/deleteTaskCommand";
 import { CompleteTaskCommand } from "../commands/completeTaskCommand";
 import { ClearAllTasksCommand } from "../commands/clearAllTasksCommand";
 
-// Read command-line input
-// Parse them
-// Call the correct method in taskManager
-// Print output to the terminal
+// Entry point for CLI-based task management
+// Responsibilities:
+// - Read user input
+// - Parse commands
+// - Execute appropriate command
+// - Print results to terminal
 
 const taskManager = new TaskManager(); // Create instances of task manager (handles data)
 const commandManager = new CommandManager(); // and command manager (handles execution + undo/redo)
 
+// Parses user input and executes the corresponding command
 function handleCommand(args: string[]) {
-  const command = args[0];
+  const command = args[0]; // First word is the command keyword
 
   switch (command) {
     // Add a new task
     case "add": {
-      const title = args.slice(1).join(" ");
+      const title = args.slice(1).join(" "); // Remaining words form the task title
 
       if (!title) {
         console.log("Please provide a task title");
         break;
       }
 
+      // Create and execute add command
       const cmd = new AddTaskCommand(taskManager, title);
       commandManager.executeCommand(cmd);
 
+      // Display created task info
       if (cmd.createdTask) {
         console.log(
           `Task added: [${cmd.createdTask.id}] ${cmd.createdTask.title}`,
@@ -40,7 +45,7 @@ function handleCommand(args: string[]) {
       break;
     }
 
-    // Update a task
+    // Update an existing task
     case "update": {
       const id = Number(args[1]);
       const title = args.slice(2).join(" ");
@@ -50,9 +55,11 @@ function handleCommand(args: string[]) {
         break;
       }
 
+      // Create and execute update command
       const cmd = new UpdateTaskCommand(taskManager, id, title);
       commandManager.executeCommand(cmd);
 
+      // Check if task existed before update
       if (!cmd.previousTask) {
         console.log("Task not found");
       } else {
@@ -70,9 +77,11 @@ function handleCommand(args: string[]) {
         break;
       }
 
+      // Create and execute delete command
       const cmd = new DeleteTaskCommand(taskManager, id);
       commandManager.executeCommand(cmd);
 
+      // Confirm deletion
       if (cmd.deletedTask) {
         console.log("Task deleted successfully");
       }
@@ -88,13 +97,14 @@ function handleCommand(args: string[]) {
         break;
       }
 
+      // Print each task with status
       tasks.forEach((i) => {
         console.log(`${i.id}. [${i.isCompleted ? "x" : " "}] ${i.title}`);
       });
       break;
     }
 
-    // Complete task
+    // Mark a task as completed
     case "complete": {
       const id = Number(args[1]);
 
@@ -103,11 +113,13 @@ function handleCommand(args: string[]) {
         break;
       }
 
+      // Create and execute complete task command
       const cmd = new CompleteTaskCommand(taskManager, id);
       commandManager.executeCommand(cmd);
 
       const updatedTask = taskManager.findTaskById(id);
 
+       // Verify completion
       if (updatedTask?.isCompleted) {
         console.log("Task completed successfully");
       } else {
@@ -116,7 +128,7 @@ function handleCommand(args: string[]) {
       break;
     }
 
-    // Find
+    // Find a specific task
     case "find": {
       const id = Number(args[1]);
 
@@ -137,22 +149,23 @@ function handleCommand(args: string[]) {
       break;
     }
 
-    // Undo
+    // Undo last command
     case "undo": {
       commandManager.undo();
       console.log("Undo performed");
       break;
     }
 
-    // Redo
+    // Redo last undone command
     case "redo": {
       commandManager.redo();
       console.log("Redo performed");
       break;
     }
 
-    // Clear
+    // Clear all tasks
     case "clear": {
+      // Create and execute clear all tasks command
       const cmd = new ClearAllTasksCommand(taskManager);
       commandManager.executeCommand(cmd);
 
@@ -160,6 +173,7 @@ function handleCommand(args: string[]) {
       break;
     }
 
+    // Exit application
     case "exit": {
       console.log("Goodbye 👋");
       process.exit(0);
@@ -170,16 +184,16 @@ function handleCommand(args: string[]) {
   }
 }
 
-// Creating CLI interface using stdin and stdout
+// Create CLI interface using standard input/output
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 
-// Recursively prompts user for input
+// Recursively prompts user for input (keeps CLI running)
 function prompt() {
   rl.question("> ", (input) => {
-     // Split input into arguments
+    // Split input into arguments
     const args = input.trim().split(" ");
 
     // Handle command
@@ -190,7 +204,7 @@ function prompt() {
   });
 }
 
-// Initial UI messages
+// Initial welcome message
 console.log("\n==== WELCOME TO TASKFLOW CLI ==== ");
 
 console.log("\nAvailable Commands to Manage Tasks: \n");
@@ -202,7 +216,6 @@ console.log("5. complete: Complete a task by index ");
 console.log("6. find: Find a task by title");
 console.log("7. clear: Clears task list");
 console.log("8. exit: Exits the app \n\n");
-
 
 // Start CLI loop
 prompt();
