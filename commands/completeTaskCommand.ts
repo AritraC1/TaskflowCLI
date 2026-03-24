@@ -8,6 +8,7 @@ class CompleteTaskCommand implements Command {
   private taskManager: TaskManager;
   private taskId: number;
   public completedTask: Task | null = null;
+  private afterTask: Task | null = null;
 
   constructor(taskManager: TaskManager, taskId: number) {
     this.taskId = taskId;
@@ -16,14 +17,22 @@ class CompleteTaskCommand implements Command {
 
   // Executes the command: Marks the task as completed and stores it for undo
   execute(): void {
-    this.completedTask = this.taskManager.completeTaskById(this.taskId);
+    const task = this.taskManager.findTaskById(this.taskId);
+
+    if (!task) return;
+
+    // Store snapshot of task BEFORE completing
+    this.completedTask = new Task(task.id, task.title, task.isCompleted);
+    this.afterTask = new Task(task.id, task.title, true);
+
+    this.taskManager.restoreTask(this.afterTask);
   }
 
   // Undoes the command: Restores the previously completed task if it exists
   undo(): void {
-    if (this.completedTask) {
-      this.taskManager.restoreTask(this.completedTask);
-    }
+    if (!this.completedTask) return;
+
+    this.taskManager.restoreTask(this.completedTask);
   }
 }
 

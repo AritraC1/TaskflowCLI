@@ -106,7 +106,9 @@ function handleCommand(args: string[]) {
       const cmd = new CompleteTaskCommand(taskManager, id);
       commandManager.executeCommand(cmd);
 
-      if (cmd.completedTask?.isCompleted) {
+      const updatedTask = taskManager.findTaskById(id);
+
+      if (updatedTask?.isCompleted) {
         console.log("Task completed successfully");
       } else {
         console.log("Unable to complete task");

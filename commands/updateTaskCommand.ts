@@ -18,7 +18,12 @@ class UpdateTaskCommand implements Command {
 
   // Executes the command: Retrieves and stores the current task state and Updates the task title if the task exists
   execute(): void {
-    this.previousTask = this.taskManager.findTaskById(this.id) || null;
+    const task = this.taskManager.findTaskById(this.id);
+
+    this.previousTask = task
+      ? new Task(task.id, task.title, task.isCompleted)
+      : null;
+
     if (this.previousTask) {
       this.taskManager.updateTaskById(this.id, this.newTitle);
     }
@@ -26,9 +31,9 @@ class UpdateTaskCommand implements Command {
 
   // Undoes the command: Restores the task to its previous state if it exists
   undo(): void {
-    if (this.previousTask) {
-      this.taskManager.restoreTask(this.previousTask);
-    }
+    if (!this.previousTask) return;
+
+    this.taskManager.restoreTask(this.previousTask);
   }
 }
 

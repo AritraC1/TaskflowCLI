@@ -10,13 +10,18 @@ class AddTaskCommand {
         this.taskManager = taskManager;
         this.title = title;
     }
-    // Executes the command: Creates a new task using TaskManager and stores it
+    // Executes the command: If task already exists (redo case), restore it
     execute() {
-        this.createdTask = this.taskManager.addNewTask(this.title);
+        if (this.createdTask) {
+            this.taskManager.addTaskWithId(this.createdTask);
+        }
+        else {
+            this.createdTask = this.taskManager.addNewTask(this.title);
+        }
     }
     // Undoes the command: Deletes the previously created task if it exists
     undo() {
-        if (this.createdTask !== null) {
+        if (this.createdTask) {
             this.taskManager.deleteTaskById(this.createdTask.id);
         }
     }

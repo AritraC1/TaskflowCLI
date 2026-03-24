@@ -1,129 +1,118 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.TaskManager = void 0;
+const linkedList_1 = require("../data-structures/linkedList");
 const task_1 = require("../models/task");
 const fileHandler_1 = require("./fileHandler");
-// Manages tasks and their state (in-memory + persistence)
 class TaskManager {
     constructor() {
         this.fileHandler = new fileHandler_1.FileHandler();
-        // Load existing tasks from file
-        this.tasks = this.fileHandler.loadTasks();
-        // Find the highest existing ID to continue incrementing safely
+        this.tasks = new linkedList_1.DoublyLinkedList();
+        this.nextId = 1;
+        const loadedTasks = this.fileHandler.loadTasks();
         let maxId = 0;
-        for (const task of this.tasks) {
-            if (task.id > maxId) {
-                maxId = task.id;
-            }
+        for (const t of loadedTasks) {
+            const task = new task_1.Task(t.id, t.title, t.isCompleted);
+            this.tasks.append(task);
+            if (t.id > maxId)
+                maxId = t.id;
         }
         this.nextId = maxId + 1;
     }
-    // Add a new task with an auto-incremented ID
     addNewTask(title) {
         const newTask = new task_1.Task(this.nextId, title, false);
-        this.tasks.push(newTask);
+        this.tasks.append(newTask);
         this.nextId++;
-        this.fileHandler.saveTask(this.tasks);
+        this.fileHandler.saveTask(this.tasks.toArray());
         return newTask;
     }
-    // Add a task with a predefined ID (used for restore cases)
     addTaskWithId(task) {
-        this.tasks.push(task);
-        // keeping nextId in sync to avoid id collision
+        this.tasks.append(task);
         if (task.id >= this.nextId) {
             this.nextId = task.id + 1;
         }
-        // Persist changes
-        this.fileHandler.saveTask(this.tasks);
+        this.fileHandler.saveTask(this.tasks.toArray());
     }
-    // Update a task's title by ID
     updateTaskById(id, title) {
-        let found = false;
-        // Replace the matching task with updated version
-        this.tasks = this.tasks.map((task) => {
-            if (task.id === id) {
-                found = true;
-                return new task_1.Task(task.id, title, task.isCompleted);
-            }
-            return task;
-        });
-        // Save only if a task was updated
-        if (found)
-            this.fileHandler.saveTask(this.tasks);
-        return found;
+        const node = this.tasks.findById(id);
+        if (!node)
+            return false;
+        node.task = new task_1.Task(node.task.id, title, node.task.isCompleted);
+        this.fileHandler.saveTask(this.tasks.toArray());
+        return true;
     }
-    // Delete a task by ID and return it
     deleteTaskById(id) {
-        let deletedTask = null;
-        // Filter out the task to delete
-        this.tasks = this.tasks.filter((task) => {
-            if (task.id === id) {
-                deletedTask = task; // capture deleted task
-                return false;
-            }
-            return true;
-        });
-        // Save only if something was deleted
-        if (deletedTask) {
-            this.fileHandler.saveTask(this.tasks);
+        const deleted = this.tasks.removeById(id);
+        if (deleted) {
+            this.fileHandler.saveTask(this.tasks.toArray());
         }
-        return deletedTask;
+        return deleted;
     }
-    // Return a copy of all tasks (prevents external mutation)
     getAllTasks() {
-        return [...this.tasks];
+        return this.tasks.toArray();
     }
-    // Mark a task as completed by ID
     completeTaskById(id) {
-        let completedTask = null;
-        this.tasks = this.tasks.map((task) => {
-            if (task.id === id) {
-                completedTask = task; // store old state
-                return new task_1.Task(task.id, task.title, true); // mark complete
-            }
-            return task;
-        });
-        // Save only if task was found
-        if (completedTask) {
-            this.fileHandler.saveTask(this.tasks);
-        }
-        return completedTask;
+        const node = this.tasks.findById(id);
+        if (!node)
+            return null;
+        node.task = new task_1.Task(node.task.id, node.task.title, true);
+        this.fileHandler.saveTask(this.tasks.toArray());
+        return node.task;
     }
-    // Find a task by Id
     findTaskById(id) {
-        return this.tasks.find((task) => task.id === id);
+        const node = this.tasks.findById(id);
+        return node ? node.task : null;
     }
-    // Restore a task (used for undo functionality)
+    findNodeById(id) {
+        return this.tasks.findById(id);
+    }
     restoreTask(task) {
-        let found = false;
-        // Replace task if it exists
-        this.tasks = this.tasks.map((t) => {
-            if (t.id === task.id) {
-                found = true;
-                return task; // restore full previous state
-            }
-            return t;
-        });
-        // If task doesn't exist, re-add it
-        if (!found) {
-            this.tasks.push(task);
-            // keep nextId correct
-            if (task.id >= this.nextId) {
-                this.nextId = task.id + 1;
-            }
+        const existing = this.tasks.findById(task.id);
+        if (existing) {
+            existing.task = task;
         }
-        this.fileHandler.saveTask(this.tasks);
+        else {
+            this.tasks.append(task);
+        }
+        this.fileHandler.saveTask(this.tasks.toArray());
     }
-    // Clear task list
+    insertAfter(prevId, task) {
+        // Insert at head
+        if (prevId === null) {
+            const newNode = new linkedList_1.TaskNode(task);
+            if (!this.tasks.head) {
+                this.tasks.head = this.tasks.tail = newNode;
+            }
+            else {
+                newNode.next = this.tasks.head;
+                this.tasks.head.prev = newNode;
+                this.tasks.head = newNode;
+            }
+            this.fileHandler.saveTask(this.tasks.toArray());
+            return;
+        }
+        const prevNode = this.tasks.findById(prevId);
+        if (!prevNode)
+            return;
+        const newNode = new linkedList_1.TaskNode(task);
+        newNode.next = prevNode.next;
+        newNode.prev = prevNode;
+        if (prevNode.next) {
+            prevNode.next.prev = newNode;
+        }
+        else {
+            this.tasks.tail = newNode;
+        }
+        prevNode.next = newNode;
+        this.fileHandler.saveTask(this.tasks.toArray());
+    }
     clearAllTasks() {
-        // Clear the in memory
-        this.tasks = [];
-        // clear the JSON file
-        this.fileHandler.saveTask(this.tasks);
+        this.tasks = new linkedList_1.DoublyLinkedList();
+        this.fileHandler.saveTask([]);
     }
-    // set task
     setTasks(tasks) {
-        this.tasks = tasks;
+        this.tasks.fromArray(tasks);
+        this.fileHandler.saveTask(this.tasks.toArray());
     }
 }
 exports.TaskManager = TaskManager;

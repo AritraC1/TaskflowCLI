@@ -1,158 +1,145 @@
+import { DoublyLinkedList, TaskNode } from "../data-structures/linkedList";
 import { Task } from "../models/task";
 import { FileHandler } from "./fileHandler";
 
-// Manages tasks and their state (in-memory + persistence)
 class TaskManager {
   private fileHandler = new FileHandler();
-  private tasks: Task[]; // In-memory list of tasks
-  private nextId: number; // Tracks the next available ID for new tasks
+  private tasks = new DoublyLinkedList();
+  private nextId: number = 1;
 
   constructor() {
-    // Load existing tasks from file
-    this.tasks = this.fileHandler.loadTasks();
+    const loadedTasks = this.fileHandler.loadTasks();
 
-    // Find the highest existing ID to continue incrementing safely
     let maxId = 0;
-    for (const task of this.tasks) {
-      if (task.id > maxId) {
-        maxId = task.id;
-      }
+
+    for (const t of loadedTasks) {
+      const task = new Task(t.id, t.title, t.isCompleted);
+      this.tasks.append(task);
+
+      if (t.id > maxId) maxId = t.id;
     }
 
     this.nextId = maxId + 1;
   }
 
-  // Add a new task with an auto-incremented ID
   addNewTask(title: string): Task {
     const newTask = new Task(this.nextId, title, false);
-    this.tasks.push(newTask);
+    this.tasks.append(newTask);
     this.nextId++;
 
-    this.fileHandler.saveTask(this.tasks);
+    this.fileHandler.saveTask(this.tasks.toArray());
     return newTask;
   }
 
-  // Add a task with a predefined ID (used for restore cases)
   addTaskWithId(task: Task): void {
-    this.tasks.push(task);
+    this.tasks.append(task);
 
-    // keeping nextId in sync to avoid id collision
     if (task.id >= this.nextId) {
       this.nextId = task.id + 1;
     }
 
-    // Persist changes
-    this.fileHandler.saveTask(this.tasks);
+    this.fileHandler.saveTask(this.tasks.toArray());
   }
 
-  // Update a task's title by ID
   updateTaskById(id: number, title: string): boolean {
-    let found = false;
+    const node = this.tasks.findById(id);
+    if (!node) return false;
 
-    // Replace the matching task with updated version
-    this.tasks = this.tasks.map((task) => {
-      if (task.id === id) {
-        found = true;
-        return new Task(task.id, title, task.isCompleted);
-      }
-      return task;
-    });
+    node.task = new Task(node.task.id, title, node.task.isCompleted);
 
-    // Save only if a task was updated
-    if (found) this.fileHandler.saveTask(this.tasks);
-
-    return found;
+    this.fileHandler.saveTask(this.tasks.toArray());
+    return true;
   }
 
-  // Delete a task by ID and return it
   deleteTaskById(id: number): Task | null {
-    let deletedTask: Task | null = null;
+    const deleted = this.tasks.removeById(id);
 
-    // Filter out the task to delete
-    this.tasks = this.tasks.filter((task) => {
-      if (task.id === id) {
-        deletedTask = task; // capture deleted task
-        return false;
-      }
-      return true;
-    });
-
-    // Save only if something was deleted
-    if (deletedTask) {
-      this.fileHandler.saveTask(this.tasks);
+    if (deleted) {
+      this.fileHandler.saveTask(this.tasks.toArray());
     }
 
-    return deletedTask;
+    return deleted;
   }
 
-  // Return a copy of all tasks (prevents external mutation)
   getAllTasks(): Task[] {
-    return [...this.tasks];
+    return this.tasks.toArray();
   }
 
-  // Mark a task as completed by ID
   completeTaskById(id: number): Task | null {
-    let completedTask: Task | null = null;
+    const node = this.tasks.findById(id);
+    if (!node) return null;
 
-    this.tasks = this.tasks.map((task) => {
-      if (task.id === id) {
-        completedTask = task; // store old state
-        return new Task(task.id, task.title, true); // mark complete
-      }
-      return task;
-    });
+    node.task = new Task(node.task.id, node.task.title, true);
 
-     // Save only if task was found
-    if (completedTask) {
-      this.fileHandler.saveTask(this.tasks);
-    }
-
-    return completedTask;
+    this.fileHandler.saveTask(this.tasks.toArray());
+    return node.task;
   }
 
-  // Find a task by Id
-  findTaskById(id: number) {
-    return this.tasks.find((task) => task.id === id);
+  findTaskById(id: number): Task | null {
+    const node = this.tasks.findById(id);
+    return node ? node.task : null;
   }
 
-   // Restore a task (used for undo functionality)
+  findNodeById(id: number) {
+    return this.tasks.findById(id);
+  }
+
   restoreTask(task: Task): void {
-    let found = false;
+    const existing = this.tasks.findById(task.id);
 
-    // Replace task if it exists
-    this.tasks = this.tasks.map((t) => {
-      if (t.id === task.id) {
-        found = true;
-        return task; // restore full previous state
-      }
-      return t;
-    });
-
-    // If task doesn't exist, re-add it
-    if (!found) {
-      this.tasks.push(task);
-
-      // keep nextId correct
-      if (task.id >= this.nextId) {
-        this.nextId = task.id + 1;
-      }
+    if (existing) {
+      existing.task = task;
+    } else {
+      this.tasks.append(task);
     }
 
-    this.fileHandler.saveTask(this.tasks);
+    this.fileHandler.saveTask(this.tasks.toArray());
   }
 
-  // Clear task list
+  insertAfter(prevId: number | null, task: Task): void {
+    // Insert at head
+    if (prevId === null) {
+      const newNode = new TaskNode(task);
+
+      if (!this.tasks.head) {
+        this.tasks.head = this.tasks.tail = newNode;
+      } else {
+        newNode.next = this.tasks.head;
+        this.tasks.head.prev = newNode;
+        this.tasks.head = newNode;
+      }
+
+      this.fileHandler.saveTask(this.tasks.toArray());
+      return;
+    }
+
+    const prevNode = this.tasks.findById(prevId);
+    if (!prevNode) return;
+
+    const newNode = new TaskNode(task);
+
+    newNode.next = prevNode.next;
+    newNode.prev = prevNode;
+
+    if (prevNode.next) {
+      prevNode.next.prev = newNode;
+    } else {
+      this.tasks.tail = newNode;
+    }
+
+    prevNode.next = newNode;
+
+    this.fileHandler.saveTask(this.tasks.toArray());
+  }
+
   clearAllTasks(): void {
-    // Clear the in memory
-    this.tasks = [];
-
-    // clear the JSON file
-    this.fileHandler.saveTask(this.tasks);
+    this.tasks = new DoublyLinkedList();
+    this.fileHandler.saveTask([]);
   }
 
-  // set task
-  setTasks(tasks: any[]): void {
-    this.tasks = tasks;
+  setTasks(tasks: Task[]): void {
+    this.tasks.fromArray(tasks);
+    this.fileHandler.saveTask(this.tasks.toArray());
   }
 }
 

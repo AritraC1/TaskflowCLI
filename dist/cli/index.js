@@ -87,7 +87,8 @@ function handleCommand(args) {
             }
             const cmd = new completeTaskCommand_1.CompleteTaskCommand(taskManager, id);
             commandManager.executeCommand(cmd);
-            if (cmd.completedTask?.isCompleted) {
+            const updatedTask = taskManager.findTaskById(id);
+            if (updatedTask?.isCompleted) {
                 console.log("Task completed successfully");
             }
             else {
