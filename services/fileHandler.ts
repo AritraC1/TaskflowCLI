@@ -20,7 +20,7 @@ class FileHandler {
     }
   }
 
-   // Save tasks to the JSON file
+  // Save tasks to the JSON file
   saveTask(tasks: any[]) {
     try {
       fs.writeFileSync(filePath, JSON.stringify(tasks, null, 2));
